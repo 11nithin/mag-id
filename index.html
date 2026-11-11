@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>MAG Device ID Check</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; background: #0b0f17; color: #e8ecf3; font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; overflow: hidden; }
+  #wrap { position: absolute; left: 60px; top: 30px; right: 60px; }
+  h1 { font-size: 34px; }
+  .sub { font-size: 18px; color: #8d97aa; margin-top: 8px; line-height: 1.5; }
+  .row { margin-top: 12px; padding: 12px 22px; background: #151c2b; border-radius: 12px; }
+  .lbl { font-size: 15px; letter-spacing: 1.4px; text-transform: uppercase; color: #8d97aa; }
+  .val { font-family: "Courier New", monospace; font-size: 24px; margin-top: 6px; word-wrap: break-word; letter-spacing: 1px; }
+  .ok { color: #46a758; } .bad { color: #e5484d; }
+  .verdict { margin-top: 16px; font-size: 24px; font-weight: 700; }
+  .note { margin-top: 6px; font-size: 16px; color: #8d97aa; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>MAG device ID check</h1>
+  <div class="sub">This page only reads and shows values from this box. Nothing is sent anywhere.</div>
+  <div id="out"></div>
+</div>
+<script>
+(function () {
+  var stb = window.gSTB || null;
+  var out = document.getElementById('out');
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+  // Try each built-in function in turn; older firmware may name them differently.
+  function read(names) {
+    if (!stb) return { value: '', via: '' };
+    for (var i = 0; i < names.length; i++) {
+      var n = names[i];
+      try {
+        var v = n.indexOf('RDir:') === 0 ? stb.RDir(n.slice(5)) : (typeof stb[n] === 'function' ? stb[n]() : '');
+        if (v && String(v).replace(/\s/g, '')) return { value: String(v).replace(/^\s+|\s+$/g, ''), via: n };
+      } catch (e) { /* try the next one */ }
+    }
+    return { value: '', via: '' };
+  }
+
+  // Long IDs are grouped in fours so they are easier to read on a TV.
+  function group(v) { return v.length > 20 ? v.replace(/(.{4})/g, '$1 ').replace(/\s+$/, '') : v; }
+  function isId(v) { return /^[0-9A-Fa-f]{64}$/.test(v); }
+
+  var rows = [
+    { label: 'Device ID', r: read(['GetDeviceID']), id: true },
+    { label: 'Device ID 2', r: read(['GetDeviceID2']), id: true },
+    { label: 'MAC address', r: read(['GetDeviceMacAddress', 'RDir:MACAddress']) },
+    { label: 'Serial number', r: read(['GetDeviceSerialNumber', 'RDir:SerialNumber']) },
+    { label: 'Model', r: read(['GetDeviceModel', 'RDir:Model']) }
+  ];
+
+  var h = '', idsOk = 0;
+  for (var i = 0; i < rows.length; i++) {
+    var v = rows[i].r.value;
+    if (rows[i].id && isId(v)) idsOk++;
+    h += '<div class="row"><div class="lbl">' + rows[i].label + '</div><div class="val ' + (v ? '' : 'bad') + '">' +
+      (v ? esc(group(v)) : 'Not available') + '</div></div>';
+  }
+
+  var verdict;
+  if (!stb) verdict = '<span class="bad">This is not a MAG box.</span> Open this page on the MAG to see its values.';
+  else if (idsOk === 2) verdict = '<span class="ok">Both device IDs found.</span> The custom portal can identify as this box.';
+  else if (idsOk === 1) verdict = '<span class="ok">One device ID found.</span> The custom portal can likely work.';
+  else verdict = '<span class="bad">No device IDs found.</span> This firmware does not expose them to web pages.';
+
+  out.innerHTML = '<div class="verdict">' + verdict + '</div>' +
+    '<div class="note">Treat the device IDs like a password: don\'t post them online. Press Back on the remote to leave.</div>' + h;
+
+  // Let the remote's Back/Exit buttons leave the page.
+  document.addEventListener('keydown', function (e) {
+    if ((e.keyCode === 8 || e.keyCode === 27) && history.length > 1) { e.preventDefault(); history.back(); }
+  }, false);
+})();
+</script>
+</body>
+</html>
