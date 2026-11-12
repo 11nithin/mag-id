@@ -414,23 +414,23 @@
   function vodTile(m){
     var img = m.poster ? '<img src="'+esc(m.poster)+'" loading="lazy" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'"><span class="initials" style="display:none">'+esc(initials(m.name))+'</span>'
                        : '<span class="initials">'+esc(initials(m.name))+'</span>';
-    return '<div class="tile vod" data-cmd="'+esc(m.cmd)+'" data-name="'+esc(m.name)+'">'+
+    return '<div class="tile vod" data-id="'+esc(m.id)+'" data-cat="'+esc(state.vod.id)+'" data-name="'+esc(m.name)+'">'+
       '<div class="poster">'+img+'<span class="play"><span><svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></span></span></div>'+
       '<div class="meta"><div class="name">'+esc(m.name)+'</div>'+(m.year?'<div class="yr">'+esc(m.year)+'</div>':'')+'</div>'+
     '</div>';
   }
   function bindVodTiles(){
     [].forEach.call(main.querySelectorAll(".tile.vod"), function(t){
-      t.onclick = function(){ playVod(t.getAttribute("data-cmd"), t.getAttribute("data-name")); };
+      t.onclick = function(){ playVod(t.getAttribute("data-id"), t.getAttribute("data-cat"), t.getAttribute("data-name")); };
     });
   }
-  function playVod(cmd, name){
+  function playVod(id, cat, name){
     el("ptitle").textContent = name || "";
     el("player").classList.add("show");
     el("pload").style.display="flex"; el("pload").innerHTML='<span class="spin"></span> Loading…';
     stopHls();
-    getJSON("/api/link?type=vod&cmd="+encodeURIComponent(cmd)).then(function(r){
-      if(!r || !r.url){ el("pload").innerHTML="This title is temporarily unavailable from the provider.<br>Try another, or check back later."; return; }
+    getJSON("/api/vod/play?id="+encodeURIComponent(id)+"&category="+encodeURIComponent(cat||"")).then(function(r){
+      if(!r || !r.url){ el("pload").innerHTML=(r&&r.error)?esc(r.error):"This title is temporarily unavailable. Try another."; return; }
       startStream(r.url);
     }).catch(function(){ el("pload").innerHTML="Couldn’t load this title."; });
   }
