@@ -56,6 +56,12 @@
   .h1{font-size:22px;font-weight:800;margin:4px 0 2px}
   .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--tile),1fr));gap:14px}
+  .grid.posters{grid-template-columns:repeat(auto-fill,minmax(132px,1fr))}
+  .tile .poster{aspect-ratio:2/3;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;
+    background:radial-gradient(120% 120% at 30% 20%,#2a2a37,#15151d)}
+  .tile .poster img{width:100%;height:100%;object-fit:cover}
+  .tile .yr{color:var(--muted);font-size:12px;margin-top:2px}
+  .banner{background:#1e1a0e;border:1px solid #4a3c10;color:#e7c66b;padding:10px 14px;border-radius:10px;font-size:13px;margin-bottom:16px}
   .tile{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;
     cursor:pointer;transition:transform .12s ease,border-color .12s ease,box-shadow .12s ease}
   .tile:hover{transform:translateY(-3px);border-color:#3a3a48;box-shadow:0 10px 24px rgba(0,0,0,.45)}
@@ -147,7 +153,8 @@
 (function(){
   "use strict";
   var API = "";
-  var state = { genres:[], channels:[], byGenre:{}, favs:[], view:{type:"fav"}, page:0, pageSize:120, tab:"all" };
+  var state = { genres:[], channels:[], byGenre:{}, favs:[], view:{type:"fav"}, page:0, pageSize:120, tab:"all",
+    vodCats:[], vodTitle:{}, vod:{ id:null, items:[], page:0, totalPages:1, loading:false } };
   var TABS = [
     { id:"all",    label:"All" },
     { id:"movies", label:"Movies", re:/movie|cinema|vod|film/i },
@@ -183,11 +190,13 @@
         return;
       }
       setStatus(true);
-      Promise.all([ getJSON("/api/live"), getJSON("/api/state").catch(function(){return {};}) ]).then(function(res){
-        var live = res[0]||{}, stt = res[1]||{};
+      Promise.all([ getJSON("/api/live"), getJSON("/api/state").catch(function(){return {};}), getJSON("/api/vod/categories?type=vod").catch(function(){return [];}) ]).then(function(res){
+        var live = res[0]||{}, stt = res[1]||{}, vod = res[2]||[];
         state.genres = live.genres||[];
         state.channels = live.channels||[];
         state.favs = Array.isArray(stt.favourites)? stt.favourites.slice() : [];
+        state.vodCats = Array.isArray(vod)? vod : [];
+        state.vodTitle = {}; state.vodCats.forEach(function(c){ state.vodTitle[c.id]=c.title; });
         index();
         buildTabs();
         buildNav();
@@ -214,42 +223,68 @@
       if(t.id!=="all" && !cnt) return;
       html += '<button data-tab="'+t.id+'"'+(state.tab===t.id?' class="active"':'')+'>'+esc(t.label)+'</button>';
     });
+    if(state.vodCats.length){ html += '<button data-tab="vod"'+(state.tab==="vod"?' class="active"':'')+'>Video Club</button>'; }
     el("tabs").innerHTML=html;
     [].forEach.call(el("tabs").querySelectorAll("button"), function(b){
       b.onclick=function(){ state.tab=b.getAttribute("data-tab"); buildTabs(); buildNav(); selectFirst(); };
     });
   }
   function selectFirst(){
+    if(state.tab==="vod"){
+      if(state.vodCats.length) showVodCat(state.vodCats[0].id);
+      else main.innerHTML='<div class="empty">No Video Club categories available.</div>';
+      return;
+    }
     for(var i=0;i<state.genres.length;i++){
       if(genreInTab(state.genres[i]) && (state.byGenre[state.genres[i].id]||[]).length){ show({type:"genre", id:state.genres[i].id}); return; }
     }
     show({type:"fav"});
   }
   function buildNav(){
-    var html = '<button class="navitem" data-t="fav"><span>⭐ Favourites</span><span class="n">'+state.favs.length+'</span></button>';
-    var groups = {}, order=[];
-    state.genres.forEach(function(g){
-      if(!genreInTab(g)) return;
-      if(!(state.byGenre[g.id]||[]).length) return;
-      var sec = String(g.title||"").split("|")[0].trim() || "Other";
-      if(!groups[sec]){ groups[sec]=[]; order.push(sec); }
-      groups[sec].push(g);
-    });
-    order.forEach(function(sec){
-      html += '<div class="grp">'+esc(sec)+'</div>';
-      groups[sec].forEach(function(g){
-        html += '<button class="navitem" data-t="genre" data-id="'+esc(g.id)+'"><span>'+esc(g.title)+'</span><span class="n">'+(state.byGenre[g.id]||[]).length+'</span></button>';
+    var html, groups={}, order=[];
+    if(state.tab==="vod"){
+      html = "";
+      state.vodCats.forEach(function(c){
+        var sec = String(c.title||"").split("|")[0].trim() || "Other";
+        if(!groups[sec]){ groups[sec]=[]; order.push(sec); }
+        groups[sec].push(c);
       });
-    });
+      order.forEach(function(sec){
+        html += '<div class="grp">'+esc(sec)+'</div>';
+        groups[sec].forEach(function(c){
+          html += '<button class="navitem" data-t="vodcat" data-id="'+esc(c.id)+'"><span>'+esc(c.title)+'</span></button>';
+        });
+      });
+    } else {
+      html = '<button class="navitem" data-t="fav"><span>⭐ Favourites</span><span class="n">'+state.favs.length+'</span></button>';
+      state.genres.forEach(function(g){
+        if(!genreInTab(g)) return;
+        if(!(state.byGenre[g.id]||[]).length) return;
+        var sec = String(g.title||"").split("|")[0].trim() || "Other";
+        if(!groups[sec]){ groups[sec]=[]; order.push(sec); }
+        groups[sec].push(g);
+      });
+      order.forEach(function(sec){
+        html += '<div class="grp">'+esc(sec)+'</div>';
+        groups[sec].forEach(function(g){
+          html += '<button class="navitem" data-t="genre" data-id="'+esc(g.id)+'"><span>'+esc(g.title)+'</span><span class="n">'+(state.byGenre[g.id]||[]).length+'</span></button>';
+        });
+      });
+    }
     nav.innerHTML = html;
+    bindNav();
+    markActive();
+  }
+  function bindNav(){
     [].forEach.call(nav.querySelectorAll("button"), function(b){
       b.onclick = function(){
         var t=b.getAttribute("data-t");
-        show(t==="fav"?{type:"fav"}:{type:"genre", id:b.getAttribute("data-id")});
+        if(t==="fav") show({type:"fav"});
+        else if(t==="vodcat") showVodCat(b.getAttribute("data-id"));
+        else show({type:"genre", id:b.getAttribute("data-id")});
         closeNav();
       };
     });
-    markActive();
   }
 
   function markActive(){
@@ -257,6 +292,7 @@
       var t=b.getAttribute("data-t"), on=false;
       if(state.view.type==="fav" && t==="fav") on=true;
       if(state.view.type==="genre" && t==="genre" && b.getAttribute("data-id")===state.view.id) on=true;
+      if(state.view.type==="vodcat" && t==="vodcat" && b.getAttribute("data-id")===state.view.id) on=true;
       b.classList.toggle("active", on);
     });
   }
@@ -337,6 +373,68 @@
     fetch(API+"/api/state",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({favourites:state.favs})}).catch(function(){});
   }
 
+  /* ---------- video club (VOD) ---------- */
+  function vodTitleById(id){ return state.vodTitle[id] || "Video Club"; }
+  function showVodCat(id){
+    state.view = { type:"vodcat", id:id };
+    state.vod = { id:id, items:[], page:0, totalPages:1, loading:false };
+    markActive();
+    loadVodPage();
+  }
+  function loadVodPage(){
+    if(state.vod.loading) return;
+    if(state.vod.page>0 && state.vod.page>=state.vod.totalPages) return;
+    state.vod.loading = true;
+    var catId = state.vod.id, next = state.vod.page + 1;
+    renderVod();
+    getJSON("/api/vod/list?type=vod&genre=*&category="+encodeURIComponent(catId)+"&page="+next).then(function(r){
+      if(state.vod.id!==catId) return;
+      state.vod.loading = false;
+      state.vod.page = next;
+      state.vod.totalPages = (r && r.totalPages) || 1;
+      state.vod.items = state.vod.items.concat((r && r.items) || []);
+      renderVod();
+    }).catch(function(){ if(state.vod.id!==catId) return; state.vod.loading=false; renderVod(); });
+  }
+  function renderVod(){
+    var html = '<div class="h1">'+esc(vodTitleById(state.vod.id))+'</div><div class="sub">Video Club · on-demand</div>';
+    html += '<div class="banner">On-demand titles stream from the provider’s servers, which can be offline. If one won’t play, try another or check back later.</div>';
+    if(!state.vod.items.length){
+      html += state.vod.loading ? '<div class="empty"><span class="spin"></span></div>' : '<div class="empty">Nothing in this category.</div>';
+      main.innerHTML = html; return;
+    }
+    html += '<div class="grid posters">';
+    state.vod.items.forEach(function(m){ html += vodTile(m); });
+    html += '</div>';
+    if(state.vod.page < state.vod.totalPages) html += '<button class="more" id="moreBtn">'+(state.vod.loading?"Loading…":"Show more")+'</button>';
+    main.innerHTML = html;
+    bindVodTiles();
+    var mb=el("moreBtn"); if(mb && !state.vod.loading) mb.onclick=function(){ loadVodPage(); };
+  }
+  function vodTile(m){
+    var img = m.poster ? '<img src="'+esc(m.poster)+'" loading="lazy" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'"><span class="initials" style="display:none">'+esc(initials(m.name))+'</span>'
+                       : '<span class="initials">'+esc(initials(m.name))+'</span>';
+    return '<div class="tile vod" data-cmd="'+esc(m.cmd)+'" data-name="'+esc(m.name)+'">'+
+      '<div class="poster">'+img+'<span class="play"><span><svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></span></span></div>'+
+      '<div class="meta"><div class="name">'+esc(m.name)+'</div>'+(m.year?'<div class="yr">'+esc(m.year)+'</div>':'')+'</div>'+
+    '</div>';
+  }
+  function bindVodTiles(){
+    [].forEach.call(main.querySelectorAll(".tile.vod"), function(t){
+      t.onclick = function(){ playVod(t.getAttribute("data-cmd"), t.getAttribute("data-name")); };
+    });
+  }
+  function playVod(cmd, name){
+    el("ptitle").textContent = name || "";
+    el("player").classList.add("show");
+    el("pload").style.display="flex"; el("pload").innerHTML='<span class="spin"></span> Loading…';
+    stopHls();
+    getJSON("/api/link?type=vod&cmd="+encodeURIComponent(cmd)).then(function(r){
+      if(!r || !r.url){ el("pload").innerHTML="This title is temporarily unavailable from the provider.<br>Try another, or check back later."; return; }
+      startStream(r.url);
+    }).catch(function(){ el("pload").innerHTML="Couldn’t load this title."; });
+  }
+
   /* ---------- player ---------- */
   var video = el("video"), player = el("player"), hls=null, barTimer=null;
   function playChannel(c){
@@ -378,7 +476,7 @@
     clearTimeout(qTimer);
     var v=qEl.value.trim();
     qTimer=setTimeout(function(){
-      if(v.length===0){ if(state.favs.length) show({type:"fav"}); else show({type:"genre",id:(state.genres[0]||{}).id}); return; }
+      if(v.length===0){ if(state.tab!=="vod" && state.favs.length) show({type:"fav"}); else selectFirst(); return; }
       if(v.length<2){ return; }
       show({type:"search", q:v});
     },180);
