@@ -206,7 +206,7 @@
         S.genres=live.genres||[]; S.channels=live.channels||[];
         S.favs=Array.isArray(stt.favourites)?stt.favourites.slice():[];
         S.vodCats=Array.isArray(vod)?vod:[];
-        prep(); buildModes(); setMode("live");
+        prep(); buildModes(); setMode(S.vodCats.length?"vod":"live");
       }).catch(function(){ main.innerHTML='<div class="empty">Failed to load. <button class="more" onclick="location.reload()">Retry</button></div>'; });
     }).catch(function(){ setStatus(false); setTimeout(load,5000); });
   }
@@ -226,7 +226,7 @@
 
   /* ---- mode / language / category ---- */
   function buildModes(){
-    var defs=[{id:"live",label:"📺 Live TV"},{id:"vod",label:"🎬 Video Club"},{id:"fav",label:"⭐ Favourites"}];
+    var defs=[{id:"vod",label:"🎬 Video Club"},{id:"live",label:"📺 Live TV"},{id:"fav",label:"⭐ Favourites"}];
     el("modes").innerHTML=defs.map(function(d){return '<button data-m="'+d.id+'"'+(S.mode===d.id?' class="active"':'')+'>'+d.label+'</button>';}).join("");
     [].forEach.call(el("modes").querySelectorAll("button"),function(b){ b.onclick=function(){ setMode(b.getAttribute("data-m")); }; });
   }
@@ -332,10 +332,11 @@
     main.innerHTML=html; main.scrollTop=0; bindVod();
     var mb=el("moreBtn"); if(mb&&!S.vod.loading) mb.onclick=function(){ loadVod(); };
   }
-  function vodTile(m){
+  function vodTile(m,cat){
+    cat=(cat!=null)?cat:S.vod.id;
     var ser=m.isSeries?1:0;
     var img=m.poster?'<img src="'+esc(m.poster)+'" loading="lazy" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'"><span class="initials" style="display:none">'+esc(initials(m.name))+'</span>':'<span class="initials">'+esc(initials(m.name))+'</span>';
-    return '<div class="tile vod" data-id="'+esc(m.id)+'" data-cat="'+esc(S.vod.id)+'" data-name="'+esc(m.name)+'" data-series="'+ser+'"><div class="thumb poster">'+img+
+    return '<div class="tile vod" data-id="'+esc(m.id)+'" data-cat="'+esc(cat)+'" data-name="'+esc(m.name)+'" data-series="'+ser+'"><div class="thumb poster">'+img+
       (ser?'<span class="serbadge">SERIES</span>':'')+
       '<span class="play"><span><svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></span></span></div>'+
       '<div class="meta"><div class="name">'+esc(m.name)+'</div>'+(m.year?'<div class="yr">'+esc(m.year)+'</div>':'')+'</div></div>';
@@ -367,18 +368,37 @@
   el("sheetClose").onclick=closeSeries;
   el("sheet").addEventListener("click",function(e){ if(e.target===el("sheet")) closeSeries(); });
 
-  /* ---- search ---- */
+  /* ---- search (keeps your language/category; restores them when cleared) ---- */
+  function showFilters(){ var f=(S.mode!=="fav"); el("langs").style.display=f?"":"none"; el("subs").style.display=f?"":"none"; }
+  function restoreView(){
+    showFilters();
+    if(S.mode==="fav"){ renderFav(); return; }
+    buildLangs(); buildSubs();
+    if(S.mode==="live") renderLive(); else if(S.sub) showVodCat(S.sub); else main.innerHTML='<div class="empty">Nothing here.</div>';
+  }
   var qTimer=null;
   el("q").addEventListener("input",function(){
     clearTimeout(qTimer); var v=el("q").value.trim();
     qTimer=setTimeout(function(){
-      if(v.length===0){ setMode(S.mode); return; }
+      if(v.length===0){ S.search=""; restoreView(); return; }
       if(v.length<2) return;
-      S.search=v.toLowerCase(); S.page=0; el("langs").style.display="none"; el("subs").style.display="none";
+      S.search=v.toLowerCase(); el("langs").style.display="none"; el("subs").style.display="none";
+      if(S.mode==="vod"){
+        main.innerHTML='<div class="h1">Search “'+esc(v)+'”</div><div class="empty"><span class="spin"></span></div>';
+        getJSON("/api/search?type=vod&q="+encodeURIComponent(v)).then(function(items){
+          if(S.search!==v.toLowerCase()) return; items=items||[];
+          if(!items.length){ main.innerHTML='<div class="h1">Search “'+esc(v)+'”</div><div class="empty">No movies or shows match.<br><span style="font-size:13px">Tip: switch to 📺 Live TV to search channels.</span></div>'; return; }
+          var html='<div class="h1">Search: “'+esc(v)+'”</div><div class="sub">'+items.length+' in Video Club</div><div class="grid posters">';
+          items.forEach(function(m){ html+=vodTile(m,""); }); html+='</div>';
+          main.innerHTML=html; main.scrollTop=0; bindVod();
+        }).catch(function(){ main.innerHTML='<div class="h1">Search “'+esc(v)+'”</div><div class="empty">Search failed. Try again.</div>'; });
+        return;
+      }
+      // live / favourites → search channels (all languages)
       var out=[]; for(var i=0;i<S.channels.length&&out.length<600;i++){ if(S.channels[i].name.toLowerCase().indexOf(S.search)>=0) out.push(S.channels[i]); }
-      if(!out.length){ main.innerHTML='<div class="h1">Search</div><div class="empty">No channels match “'+esc(v)+'”.<br><span style="font-size:13px">Tip: Video Club movies are under the 🎬 tab.</span></div>'; return; }
+      if(!out.length){ main.innerHTML='<div class="h1">Search “'+esc(v)+'”</div><div class="empty">No channels match.<br><span style="font-size:13px">Tip: switch to 🎬 Video Club to search movies.</span></div>'; return; }
       gridRender('Search: “'+v+'”', out.length+" channels", out, chTile, bindCh, "");
-    },170);
+    },220);
   });
 
   /* ---- player ---- */
@@ -424,6 +444,9 @@
   }
   function showBar(){ el("pbar").classList.remove("hide"); clearTimeout(barTimer); barTimer=setTimeout(function(){ el("pbar").classList.add("hide"); },3000); }
   el("pback").onclick=closePlayer; el("pfull").onclick=function(e){ e.stopPropagation(); goFull(); showBar(); }; video.controls=true;
+  // phones/tablets already expose fullscreen in the native video controls — hide the extra button there
+  var TOUCH=(/iPhone|iPad|iPod|Android/.test(navigator.userAgent))||('ontouchstart' in window && navigator.maxTouchPoints>0);
+  if(TOUCH) el("pfull").style.display="none";
   document.addEventListener("keydown",function(e){ if(e.key==="Escape"){ if(el("sheet").classList.contains("show")) closeSeries(); else if(el("player").classList.contains("show")) closePlayer(); } if(e.key==="f"&&el("player").classList.contains("show")) goFull(); });
   el("player").addEventListener("mousemove",showBar);
   el("player").addEventListener("touchstart",showBar);
