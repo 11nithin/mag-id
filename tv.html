@@ -404,14 +404,19 @@
   /* ---- player ---- */
   var video=el("video"), hls=null, barTimer=null, playWatch=null;
   function openPlayer(name){ el("ptitle").textContent=name||""; el("player").classList.add("show"); el("pload").style.display="flex"; el("pload").innerHTML='<span class="spin"></span> Loading…'; stopHls(); showBar(); }
-  function playChannel(c){ openPlayer(c.name);
+  function playChannel(c){ S.play={kind:"live",tried:true}; openPlayer(c.name);
     getJSON("/api/link?type=itv&cmd="+encodeURIComponent(c.cmd)).then(function(r){ if(!r||!r.url){ el("pload").innerHTML="This channel isn’t available right now."; return; } startStream(r.url); }).catch(function(){ el("pload").innerHTML="Couldn’t load this channel."; });
   }
-  function playVod(id,cat,name){ openPlayer(name);
+  function playVod(id,cat,name){ S.play={kind:"vod",id:id,cat:cat||"",tried:false}; openPlayer(name);
     getJSON("/api/vod/play?id="+encodeURIComponent(id)+"&category="+encodeURIComponent(cat||"")).then(function(r){ if(!r||!r.url){ el("pload").innerHTML=(r&&r.error)?esc(r.error):"This title is unavailable. Try another."; return; } startStream(r.url); }).catch(function(){ el("pload").innerHTML="Couldn’t load this title."; });
   }
-  function playEpisode(file,ep,name){ closeSeries(); openPlayer(name);
+  function playEpisode(file,ep,name){ S.play={kind:"episode",file:file,ep:ep||"",tried:false}; closeSeries(); openPlayer(name);
     getJSON("/api/vod/episode?file="+encodeURIComponent(file)+"&ep="+encodeURIComponent(ep||"")).then(function(r){ if(!r||!r.url){ el("pload").innerHTML=(r&&r.error)?esc(r.error):"This episode is unavailable. Try another."; return; } startStream(r.url); }).catch(function(){ el("pload").innerHTML="Couldn’t load this episode."; });
+  }
+  function transcodeFallback(){
+    el("pload").style.display="flex"; el("pload").innerHTML='<span class="spin"></span> Converting to HD for this device…<br><span style="font-size:12px;color:#9aa0ad">a few seconds</span>';
+    var qs=(S.play.kind==="episode")?("kind=episode&file="+encodeURIComponent(S.play.file)+"&ep="+encodeURIComponent(S.play.ep)):("kind=vod&id="+encodeURIComponent(S.play.id)+"&category="+encodeURIComponent(S.play.cat));
+    getJSON("/api/transcode?"+qs).then(function(r){ if(!r||!r.url){ el("pload").innerHTML=(r&&r.error)?esc(r.error):"Couldn’t convert this title. Try another."; return; } startStream(r.url); }).catch(function(){ el("pload").innerHTML="Couldn’t convert this title. Try another."; });
   }
   function hideLoad(){ clearTimeout(playWatch); el("pload").style.display="none"; }
   function tapToPlay(){
@@ -433,10 +438,12 @@
     video.onloadedmetadata=function(){ el("pload").style.display="none"; };
     video.oncanplay=function(){ el("pload").style.display="none"; };
     video.onplaying=hideLoad;
-    video.onerror=function(){ var c=(video.error&&video.error.code)||0; if(c){ clearTimeout(playWatch); el("pload").style.display="flex"; el("pload").innerHTML=(c===4?"This won’t play on this device. If it’s a 4K title, phones can’t play 4K — pick a non-4K title.":"Couldn’t play this (error "+c+"). Try another."); } };
+    video.onerror=function(){ var c=(video.error&&video.error.code)||0; if(!c) return; clearTimeout(playWatch);
+      if(c===4 && S.play && !S.play.tried && S.play.kind!=="live"){ S.play.tried=true; transcodeFallback(); return; }
+      el("pload").style.display="flex"; el("pload").innerHTML=(c===4?"This title won’t play on this device. Try another.":"Couldn’t play this (error "+c+"). Try another."); };
   }
   function stopHls(){ if(hls){ try{hls.destroy();}catch(e){} hls=null; } video.removeAttribute("src"); try{video.load();}catch(e){} }
-  function closePlayer(){ el("player").classList.remove("show"); stopHls(); try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} }
+  function closePlayer(){ el("player").classList.remove("show"); stopHls(); try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} try{ fetch("/api/transcode/stop"); }catch(e){} }
   function goFull(){
     var p=el("player");
     if(/iPhone|iPad|iPod/.test(navigator.userAgent) && video.webkitEnterFullscreen){ try{ video.webkitEnterFullscreen(); return; }catch(e){} }
