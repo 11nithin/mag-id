@@ -402,7 +402,7 @@
   });
 
   /* ---- player ---- */
-  var video=el("video"), hls=null, barTimer=null;
+  var video=el("video"), hls=null, barTimer=null, playWatch=null;
   function openPlayer(name){ el("ptitle").textContent=name||""; el("player").classList.add("show"); el("pload").style.display="flex"; el("pload").innerHTML='<span class="spin"></span> Loading…'; stopHls(); showBar(); }
   function playChannel(c){ openPlayer(c.name);
     getJSON("/api/link?type=itv&cmd="+encodeURIComponent(c.cmd)).then(function(r){ if(!r||!r.url){ el("pload").innerHTML="This channel isn’t available right now."; return; } startStream(r.url); }).catch(function(){ el("pload").innerHTML="Couldn’t load this channel."; });
@@ -413,23 +413,27 @@
   function playEpisode(file,ep,name){ closeSeries(); openPlayer(name);
     getJSON("/api/vod/episode?file="+encodeURIComponent(file)+"&ep="+encodeURIComponent(ep||"")).then(function(r){ if(!r||!r.url){ el("pload").innerHTML=(r&&r.error)?esc(r.error):"This episode is unavailable. Try another."; return; } startStream(r.url); }).catch(function(){ el("pload").innerHTML="Couldn’t load this episode."; });
   }
-  function hideLoad(){ el("pload").style.display="none"; }
+  function hideLoad(){ clearTimeout(playWatch); el("pload").style.display="none"; }
   function tapToPlay(){
+    clearTimeout(playWatch);
     el("pload").style.display="flex";
     el("pload").innerHTML='<button class="more" id="tapplay" style="font-size:17px;padding:16px 32px">▶&nbsp;&nbsp;Tap to play</button>';
-    var b=el("tapplay"); if(b) b.onclick=function(e){ e.stopPropagation(); el("pload").innerHTML='<span class="spin"></span> Loading…'; var p=video.play(); if(p&&p.catch) p.catch(function(){ tapToPlay(); }); };
+    var b=el("tapplay"); if(b) b.onclick=function(e){ e.stopPropagation(); el("pload").innerHTML='<span class="spin"></span> Loading…'; try{video.load();}catch(x){} var p=video.play(); armWatch(); if(p&&p.catch) p.catch(function(){ tapToPlay(); }); };
   }
-  function tryPlay(){ var p=video.play(); if(p&&p.catch) p.catch(function(){ tapToPlay(); }); }
+  function armWatch(){ clearTimeout(playWatch); playWatch=setTimeout(function(){ if(video.paused && !(video.error&&video.error.code)) tapToPlay(); }, 1600); }
+  function tryPlay(){ var p=video.play(); armWatch(); if(p&&p.catch) p.catch(function(){ tapToPlay(); }); }
   function startStream(url){
     var iOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
     var m3=url.indexOf("m3u8")>=0;
     if(m3 && window.Hls && Hls.isSupported() && !iOS){
       hls=new Hls({maxBufferLength:14}); hls.loadSource(url); hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED,function(){ tryPlay(); });
-      hls.on(Hls.Events.ERROR,function(ev,d){ if(d&&d.fatal){ el("pload").style.display="flex"; el("pload").innerHTML="Stream error. Try another."; } });
+      hls.on(Hls.Events.ERROR,function(ev,d){ if(d&&d.fatal){ clearTimeout(playWatch); el("pload").style.display="flex"; el("pload").innerHTML="Stream error. Try another."; } });
     } else { video.src=url; try{video.load();}catch(e){} tryPlay(); }
-    video.onloadedmetadata=hideLoad; video.oncanplay=hideLoad; video.onplaying=hideLoad;
-    video.onerror=function(){ var c=(video.error&&video.error.code)||0; if(c){ el("pload").style.display="flex"; el("pload").innerHTML="Couldn’t play this title. Try another."; } };
+    video.onloadedmetadata=function(){ el("pload").style.display="none"; };
+    video.oncanplay=function(){ el("pload").style.display="none"; };
+    video.onplaying=hideLoad;
+    video.onerror=function(){ var c=(video.error&&video.error.code)||0; if(c){ clearTimeout(playWatch); el("pload").style.display="flex"; el("pload").innerHTML="Couldn’t play this (error "+c+"). Try another."; } };
   }
   function stopHls(){ if(hls){ try{hls.destroy();}catch(e){} hls=null; } video.removeAttribute("src"); try{video.load();}catch(e){} }
   function closePlayer(){ el("player").classList.remove("show"); stopHls(); try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} }
