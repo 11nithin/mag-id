@@ -35,6 +35,14 @@
   .status{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:13px;white-space:nowrap}
   .status .pill{width:9px;height:9px;border-radius:50%;background:#40c463}
   .status .pill.off{background:#e5484d}
+  /* tabs */
+  .tabs{display:flex;gap:8px;overflow-x:auto;padding:10px 20px;background:#0e0e14;border-bottom:1px solid var(--line);
+    position:sticky;top:0;z-index:20;-webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{height:0}
+  .tabs button{flex:none;background:var(--card);border:1px solid var(--line);color:#cdd1d9;padding:8px 18px;
+    border-radius:999px;cursor:pointer;font-size:14px;font-weight:600;white-space:nowrap}
+  .tabs button:hover{background:var(--card2);color:#fff}
+  .tabs button.active{background:var(--red);border-color:var(--red);color:#fff}
   /* body */
   .body{flex:1;display:flex;min-height:0}
   nav{width:230px;flex:none;overflow-y:auto;border-right:1px solid var(--line);background:#0e0e14;padding:10px 0}
@@ -116,6 +124,7 @@
     </label>
     <div class="status"><span class="pill" id="pill"></span><span id="statusTxt">Connecting…</span></div>
   </header>
+  <div class="tabs" id="tabs"></div>
   <div class="body">
     <div class="backdrop" id="backdrop"></div>
     <nav id="nav"></nav>
@@ -138,7 +147,18 @@
 (function(){
   "use strict";
   var API = "";
-  var state = { genres:[], channels:[], byGenre:{}, favs:[], view:{type:"fav"}, page:0, pageSize:120 };
+  var state = { genres:[], channels:[], byGenre:{}, favs:[], view:{type:"fav"}, page:0, pageSize:120, tab:"all" };
+  var TABS = [
+    { id:"all",    label:"All" },
+    { id:"movies", label:"Movies", re:/movie|cinema|vod|film/i },
+    { id:"shows",  label:"Shows",  re:/series|tv show|web series|\bshows?\b|drama|ott/i },
+    { id:"sports", label:"Sports", re:/sport|cricket|football|soccer|ppv|espn|dazn|tennis|golf|racing|tsn|sn\+|sky\+|baseball|basketball|hockey|nba|nfl|fight|wwe|ufc|flo/i },
+    { id:"kids",   label:"Kids",   re:/kids|cartoon|rhythm|anime/i },
+    { id:"news",   label:"News",   re:/news/i },
+    { id:"music",  label:"Music",  re:/music|radio/i }
+  ];
+  function tabDef(id){ for(var i=0;i<TABS.length;i++){ if(TABS[i].id===id) return TABS[i]; } return TABS[0]; }
+  function genreInTab(g){ var t=tabDef(state.tab); if(!t.re) return true; return t.re.test(g.title||""); }
   var el = function(id){ return document.getElementById(id); };
   var main = el("main"), nav = el("nav");
 
@@ -169,8 +189,9 @@
         state.channels = live.channels||[];
         state.favs = Array.isArray(stt.favourites)? stt.favourites.slice() : [];
         index();
+        buildTabs();
         buildNav();
-        if(state.favs.length) show({type:"fav"}); else show({type:"genre", id:(state.genres[0]||{}).id});
+        if(state.favs.length) show({type:"fav"}); else selectFirst();
       }).catch(function(){ main.innerHTML='<div class="empty">Failed to load channels. <button class="more" onclick="location.reload()">Retry</button></div>'; });
     }).catch(function(){ setStatus(false); setTimeout(load,5000); });
   }
@@ -184,22 +205,40 @@
     state.chById = {}; state.channels.forEach(function(c){ state.chById[c.id]=c; });
   }
 
-  function buildNav(){
-    var html = "";
-    html += '<button class="navitem" data-t="fav"><span>⭐ Favourites</span><span class="n">'+state.favs.length+'</span></button>';
-    // group genres by the word before the first | (language/section)
-    var groups = {};
-    state.genres.forEach(function(g){
-      var sec = String(g.title||"").split("|")[0].trim() || "Other";
-      (groups[sec]=groups[sec]||[]).push(g);
+  function buildTabs(){
+    var html="";
+    TABS.forEach(function(t){
+      var cnt;
+      if(!t.re){ cnt=state.genres.length; }
+      else { cnt=0; state.genres.forEach(function(g){ if(t.re.test(g.title||"") && (state.byGenre[g.id]||[]).length) cnt++; }); }
+      if(t.id!=="all" && !cnt) return;
+      html += '<button data-tab="'+t.id+'"'+(state.tab===t.id?' class="active"':'')+'>'+esc(t.label)+'</button>';
     });
-    var order = Object.keys(groups);
+    el("tabs").innerHTML=html;
+    [].forEach.call(el("tabs").querySelectorAll("button"), function(b){
+      b.onclick=function(){ state.tab=b.getAttribute("data-tab"); buildTabs(); buildNav(); selectFirst(); };
+    });
+  }
+  function selectFirst(){
+    for(var i=0;i<state.genres.length;i++){
+      if(genreInTab(state.genres[i]) && (state.byGenre[state.genres[i].id]||[]).length){ show({type:"genre", id:state.genres[i].id}); return; }
+    }
+    show({type:"fav"});
+  }
+  function buildNav(){
+    var html = '<button class="navitem" data-t="fav"><span>⭐ Favourites</span><span class="n">'+state.favs.length+'</span></button>';
+    var groups = {}, order=[];
+    state.genres.forEach(function(g){
+      if(!genreInTab(g)) return;
+      if(!(state.byGenre[g.id]||[]).length) return;
+      var sec = String(g.title||"").split("|")[0].trim() || "Other";
+      if(!groups[sec]){ groups[sec]=[]; order.push(sec); }
+      groups[sec].push(g);
+    });
     order.forEach(function(sec){
       html += '<div class="grp">'+esc(sec)+'</div>';
       groups[sec].forEach(function(g){
-        var cnt=(state.byGenre[g.id]||[]).length;
-        if(!cnt) return;
-        html += '<button class="navitem" data-t="genre" data-id="'+esc(g.id)+'"><span>'+esc(g.title)+'</span><span class="n">'+cnt+'</span></button>';
+        html += '<button class="navitem" data-t="genre" data-id="'+esc(g.id)+'"><span>'+esc(g.title)+'</span><span class="n">'+(state.byGenre[g.id]||[]).length+'</span></button>';
       });
     });
     nav.innerHTML = html;
@@ -210,6 +249,7 @@
         closeNav();
       };
     });
+    markActive();
   }
 
   function markActive(){
