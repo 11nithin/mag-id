@@ -154,7 +154,7 @@
 
 <div class="player" id="player">
   <div class="bar" id="pbar"><button class="back" id="pback">‹</button><div class="ptitle" id="ptitle"></div><button class="full" id="pfull" title="Fullscreen">⛶</button></div>
-  <video id="video" playsinline></video>
+  <video id="video" playsinline webkit-playsinline preload="auto"></video>
   <div class="load" id="pload"><span class="spin"></span> Loading…</div>
 </div>
 
@@ -393,15 +393,23 @@
   function playEpisode(file,ep,name){ closeSeries(); openPlayer(name);
     getJSON("/api/vod/episode?file="+encodeURIComponent(file)+"&ep="+encodeURIComponent(ep||"")).then(function(r){ if(!r||!r.url){ el("pload").innerHTML=(r&&r.error)?esc(r.error):"This episode is unavailable. Try another."; return; } startStream(r.url); }).catch(function(){ el("pload").innerHTML="Couldn’t load this episode."; });
   }
+  function hideLoad(){ el("pload").style.display="none"; }
+  function tapToPlay(){
+    el("pload").style.display="flex";
+    el("pload").innerHTML='<button class="more" id="tapplay" style="font-size:17px;padding:16px 32px">▶&nbsp;&nbsp;Tap to play</button>';
+    var b=el("tapplay"); if(b) b.onclick=function(e){ e.stopPropagation(); el("pload").innerHTML='<span class="spin"></span> Loading…'; var p=video.play(); if(p&&p.catch) p.catch(function(){ tapToPlay(); }); };
+  }
+  function tryPlay(){ var p=video.play(); if(p&&p.catch) p.catch(function(){ tapToPlay(); }); }
   function startStream(url){
+    var iOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
     var m3=url.indexOf("m3u8")>=0;
-    if(m3 && window.Hls && Hls.isSupported()){
+    if(m3 && window.Hls && Hls.isSupported() && !iOS){
       hls=new Hls({maxBufferLength:14}); hls.loadSource(url); hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED,function(){ video.play().catch(function(){}); });
-      hls.on(Hls.Events.ERROR,function(ev,d){ if(d&&d.fatal) el("pload").innerHTML="Stream error. Try another."; });
-    } else { video.src=url; video.play().catch(function(){}); }
-    video.oncanplay=function(){ el("pload").style.display="none"; };
-    video.onplaying=function(){ el("pload").style.display="none"; };
+      hls.on(Hls.Events.MANIFEST_PARSED,function(){ tryPlay(); });
+      hls.on(Hls.Events.ERROR,function(ev,d){ if(d&&d.fatal){ el("pload").style.display="flex"; el("pload").innerHTML="Stream error. Try another."; } });
+    } else { video.src=url; try{video.load();}catch(e){} tryPlay(); }
+    video.onloadedmetadata=hideLoad; video.oncanplay=hideLoad; video.onplaying=hideLoad;
+    video.onerror=function(){ var c=(video.error&&video.error.code)||0; if(c){ el("pload").style.display="flex"; el("pload").innerHTML="Couldn’t play this title. Try another."; } };
   }
   function stopHls(){ if(hls){ try{hls.destroy();}catch(e){} hls=null; } video.removeAttribute("src"); try{video.load();}catch(e){} }
   function closePlayer(){ el("player").classList.remove("show"); stopHls(); try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} }
