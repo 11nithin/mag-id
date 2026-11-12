@@ -153,7 +153,7 @@
 </div>
 
 <div class="player" id="player">
-  <div class="bar" id="pbar"><button class="back" id="pback">‹</button><div class="ptitle" id="ptitle"></div><button class="full" id="pfull" title="Fullscreen">⛶</button></div>
+  <div class="bar" id="pbar"><button class="back" id="pback">‹</button><div class="ptitle" id="ptitle"></div></div>
   <video id="video" playsinline webkit-playsinline preload="auto"></video>
   <div class="load" id="pload"><span class="spin"></span> Loading…</div>
 </div>
@@ -433,7 +433,7 @@
     video.onloadedmetadata=function(){ el("pload").style.display="none"; };
     video.oncanplay=function(){ el("pload").style.display="none"; };
     video.onplaying=hideLoad;
-    video.onerror=function(){ var c=(video.error&&video.error.code)||0; if(c){ clearTimeout(playWatch); el("pload").style.display="flex"; el("pload").innerHTML="Couldn’t play this (error "+c+"). Try another."; } };
+    video.onerror=function(){ var c=(video.error&&video.error.code)||0; if(c){ clearTimeout(playWatch); el("pload").style.display="flex"; el("pload").innerHTML=(c===4?"This won’t play on this device. If it’s a 4K title, phones can’t play 4K — pick a non-4K title.":"Couldn’t play this (error "+c+"). Try another."); } };
   }
   function stopHls(){ if(hls){ try{hls.destroy();}catch(e){} hls=null; } video.removeAttribute("src"); try{video.load();}catch(e){} }
   function closePlayer(){ el("player").classList.remove("show"); stopHls(); try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} }
@@ -447,10 +447,11 @@
     }catch(e){}
   }
   function showBar(){ el("pbar").classList.remove("hide"); clearTimeout(barTimer); barTimer=setTimeout(function(){ el("pbar").classList.add("hide"); },3000); }
-  el("pback").onclick=closePlayer; el("pfull").onclick=function(e){ e.stopPropagation(); goFull(); showBar(); }; video.controls=true;
-  // phones/tablets already expose fullscreen in the native video controls — hide the extra button there
-  var TOUCH=(/iPhone|iPad|iPod|Android/.test(navigator.userAgent))||('ontouchstart' in window && navigator.maxTouchPoints>0);
-  if(TOUCH) el("pfull").style.display="none";
+  el("pback").onclick=closePlayer; video.controls=true;
+  // strip native PiP / AirPlay / download so they don't crowd the top corners; keep scrubber + fullscreen
+  try{ video.disablePictureInPicture=true; }catch(e){}
+  try{ video.setAttribute("controlsList","nodownload noplaybackrate noremoteplayback"); }catch(e){}
+  video.addEventListener("dblclick",function(){ goFull(); });
   document.addEventListener("keydown",function(e){ if(e.key==="Escape"){ if(el("sheet").classList.contains("show")) closeSeries(); else if(el("player").classList.contains("show")) closePlayer(); } if(e.key==="f"&&el("player").classList.contains("show")) goFull(); });
   el("player").addEventListener("mousemove",showBar);
   el("player").addEventListener("touchstart",showBar);
