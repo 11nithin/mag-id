@@ -39,16 +39,17 @@
   .modes button:hover{background:var(--card2)}
   .modes button.active{background:var(--red);border-color:var(--red);color:#fff}
 
-  /* chip rows */
-  .chips{display:flex;gap:8px;padding:10px 20px;flex:none;overflow-x:auto;align-items:center}
-  .chips::-webkit-scrollbar{height:0}
-  .chips.langs{border-bottom:1px solid var(--line)}
-  .chips .lbl{flex:none;color:var(--muted);font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-right:2px}
-  .chips button{flex:none;background:var(--card);border:1px solid var(--line);color:#cdd1d9;padding:8px 15px;
-    border-radius:999px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
-  .chips button:hover{background:var(--card2);color:#fff}
-  .chips button.active{background:#fff;border-color:#fff;color:#111}
-  .chips button .n{opacity:.55;font-size:12px;margin-left:5px}
+  /* dropdown rows */
+  .chips{display:flex;gap:10px;padding:10px 20px;flex:none;align-items:center}
+  .chips.langs{padding-bottom:4px}
+  .chips.subs{border-bottom:1px solid var(--line);padding-top:4px}
+  .ddlbl{flex:none;color:var(--muted);font-size:11px;letter-spacing:1px;text-transform:uppercase;width:66px}
+  select.dd{flex:1;min-width:0;max-width:360px;appearance:none;-webkit-appearance:none;color:#fff;font-size:15px;font-weight:600;
+    background-color:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 38px 12px 14px;cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa0ad' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");
+    background-repeat:no-repeat;background-position:right 13px center}
+  select.dd:focus{outline:none;border-color:#3a3a48}
+  select.dd option{background:#1b1b24;color:#fff}
 
   main{flex:1;overflow-y:auto;padding:16px 20px 70px}
   .h1{font-size:21px;font-weight:800;margin:2px 0 2px}
@@ -66,6 +67,7 @@
   .tile .poster img{width:100%;height:100%;object-fit:cover}
   .tile .initials{font-weight:800;font-size:25px;color:#cfd3db;opacity:.85;text-align:center;padding:0 6px;line-height:1.1}
   .tile .num{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.62);color:#fff;font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px}
+  .tile .serbadge{position:absolute;top:8px;left:8px;background:var(--red);color:#fff;font-size:10px;font-weight:800;letter-spacing:.5px;padding:3px 7px;border-radius:6px}
   .tile .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .12s}
   .tile:hover .play{opacity:1}
   .tile .play span{width:50px;height:50px;border-radius:50%;background:rgba(229,9,20,.94);display:flex;align-items:center;justify-content:center}
@@ -81,19 +83,40 @@
   .more{margin:22px auto 0;display:block;background:var(--card2);border:1px solid var(--line);color:#fff;padding:12px 24px;border-radius:12px;cursor:pointer;font-size:15px}
   .more:hover{background:#2c2c3a}
 
+  /* player */
   .player{position:fixed;inset:0;background:#000;z-index:60;display:none;flex-direction:column}
   .player.show{display:flex}
-  .player .bar{display:flex;align-items:center;gap:14px;padding:12px 18px;color:#fff;z-index:2;
-    background:linear-gradient(180deg,rgba(0,0,0,.8),transparent);position:absolute;top:0;left:0;right:0;transition:opacity .4s}
+  .player .bar{display:flex;align-items:center;gap:14px;padding:12px 16px;color:#fff;z-index:2;
+    background:linear-gradient(180deg,rgba(0,0,0,.82),transparent);position:absolute;top:0;left:0;right:0;transition:opacity .4s}
   .player .bar.hide{opacity:0}
-  .player .back{background:rgba(255,255,255,.14);border:none;color:#fff;border-radius:50%;width:44px;height:44px;font-size:21px;cursor:pointer}
-  .player .back:hover{background:rgba(255,255,255,.28)}
-  .player .ptitle{font-weight:700;font-size:17px}
+  .player .back,.player .full{background:rgba(255,255,255,.16);border:none;color:#fff;border-radius:50%;width:44px;height:44px;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center}
+  .player .back{font-size:22px}
+  .player .full{font-size:19px}
+  .player .back:hover,.player .full:hover{background:rgba(255,255,255,.3)}
+  .player .ptitle{flex:1;font-weight:700;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .player video{flex:1;width:100%;height:100%;background:#000;object-fit:contain}
   .player .load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;gap:12px;font-size:15px;text-align:center;padding:20px}
   .spin{width:22px;height:22px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:sp 1s linear infinite;flex:none}
   @keyframes sp{to{transform:rotate(360deg)}}
-  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#23232e;border:1px solid var(--line);color:#fff;padding:12px 18px;border-radius:10px;z-index:80;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%}
+
+  /* episode sheet */
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:70;display:none;align-items:center;justify-content:center;padding:20px}
+  .sheet.show{display:flex}
+  .sheetbox{background:#15151d;border:1px solid var(--line);border-radius:16px;width:100%;max-width:520px;max-height:82vh;display:flex;flex-direction:column;overflow:hidden}
+  .sheethead{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
+  .sheettitle{flex:1;font-size:18px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sclose{background:var(--card2);border:none;color:#fff;width:34px;height:34px;border-radius:50%;font-size:15px;cursor:pointer;flex:none}
+  .sheetbody{overflow-y:auto;padding:10px 12px 16px}
+  .seah{font-size:12px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:12px 6px 7px}
+  .eplist{display:flex;flex-direction:column;gap:7px}
+  .epbtn{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);color:#fff;
+    padding:12px 14px;border-radius:11px;cursor:pointer;text-align:left;font-size:15px}
+  .epbtn:hover{background:var(--card2);border-color:#3a3a48}
+  .epbtn .epn{flex:none;min-width:26px;height:26px;border-radius:7px;background:var(--red);color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;padding:0 5px}
+  .epbtn .epname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .epbtn .epplay{flex:none;color:var(--muted);font-size:13px}
+
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:#23232e;border:1px solid var(--line);color:#fff;padding:12px 18px;border-radius:10px;z-index:90;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%}
   .toast.show{opacity:1}
 
   @media (max-width:640px){
@@ -104,8 +127,12 @@
     .modes{padding:10px 12px 2px}
     .modes button{padding:10px 16px;font-size:15px}
     .chips{padding:9px 12px}
+    .ddlbl{width:auto;font-size:10px}
+    select.dd{max-width:none}
     main{padding:14px 12px 72px}
     .grid.posters{grid-template-columns:repeat(auto-fill,minmax(108px,1fr))}
+    .sheet{padding:0;align-items:flex-end}
+    .sheetbox{max-width:none;max-height:86vh;border-radius:18px 18px 0 0}
   }
 </style>
 </head>
@@ -126,10 +153,16 @@
 </div>
 
 <div class="player" id="player">
-  <div class="bar" id="pbar"><button class="back" id="pback">‹</button><div class="ptitle" id="ptitle"></div></div>
+  <div class="bar" id="pbar"><button class="back" id="pback">‹</button><div class="ptitle" id="ptitle"></div><button class="full" id="pfull" title="Fullscreen">⛶</button></div>
   <video id="video" playsinline></video>
   <div class="load" id="pload"><span class="spin"></span> Loading…</div>
 </div>
+
+<div class="sheet" id="sheet"><div class="sheetbox">
+  <div class="sheethead"><div class="sheettitle" id="sheetTitle"></div><button class="sclose" id="sheetClose">✕</button></div>
+  <div class="sheetbody" id="sheetBody"></div>
+</div></div>
+
 <div class="toast" id="toast"></div>
 
 <script src="vendor/hls.min.js"></script>
@@ -183,17 +216,15 @@
     S.genres.forEach(function(g){ S.byGenre[g.id]=[]; S.gTitle[g.id]=g.title; });
     S.channels.forEach(function(c){ (S.byGenre[c.genreId]=S.byGenre[c.genreId]||[]).push(c); S.chById[c.id]=c; });
     S.favSet={}; S.favs.forEach(function(id){ S.favSet[id]=1; });
-    // live languages
     var cnt={};
     S.genres.forEach(function(g){ var L=langOf(g.title); if(!S.langGenres[L]){S.langGenres[L]=[];cnt[L]=0;} if((S.byGenre[g.id]||[]).length){ S.langGenres[L].push(g); cnt[L]+=(S.byGenre[g.id]||[]).length; } });
     S.langsLive=Object.keys(S.langGenres).filter(function(L){return S.langGenres[L].length;}).sort(function(a,b){return cnt[b]-cnt[a];});
-    // vod languages
     S.vodTitle={}; S.langVodCats={};
     S.vodCats.forEach(function(c){ S.vodTitle[c.id]=c.title; var L=langOf(c.title); (S.langVodCats[L]=S.langVodCats[L]||[]).push(c); });
     S.langsVod=Object.keys(S.langVodCats).sort(function(a,b){return S.langVodCats[b].length-S.langVodCats[a].length;});
   }
 
-  /* ---- mode / language / sub builders ---- */
+  /* ---- mode / language / category ---- */
   function buildModes(){
     var defs=[{id:"live",label:"📺 Live TV"},{id:"vod",label:"🎬 Video Club"},{id:"fav",label:"⭐ Favourites"}];
     el("modes").innerHTML=defs.map(function(d){return '<button data-m="'+d.id+'"'+(S.mode===d.id?' class="active"':'')+'>'+d.label+'</button>';}).join("");
@@ -207,41 +238,34 @@
     S.lang=langs[0]||null;
     buildLangs(); pickFirstSub();
   }
+  function cap(L){ return L.charAt(0)+L.slice(1).toLowerCase(); }
   function buildLangs(){
     var langs=(S.mode==="live")?S.langsLive:S.langsVod;
-    var html='<span class="lbl">Language</span>';
-    html+=langs.map(function(L){
+    var opts=langs.map(function(L){
       var n=(S.mode==="live")?(S.langGenres[L]||[]).reduce(function(a,g){return a+(S.byGenre[g.id]||[]).length;},0):(S.langVodCats[L]||[]).length;
-      return '<button data-l="'+esc(L)+'"'+(S.lang===L?' class="active"':'')+'>'+esc(cap(L))+'<span class="n">'+n+'</span></button>';
+      return '<option value="'+esc(L)+'"'+(S.lang===L?' selected':'')+'>'+esc(cap(L))+' ('+n+')</option>';
     }).join("");
-    el("langs").innerHTML=html;
-    [].forEach.call(el("langs").querySelectorAll("button"),function(b){ b.onclick=function(){ S.lang=b.getAttribute("data-l"); buildLangs(); pickFirstSub(); }; });
+    el("langs").innerHTML='<span class="ddlbl">Language</span><select id="langSel" class="dd">'+opts+'</select>';
+    el("langSel").onchange=function(){ S.lang=this.value; pickFirstSub(); };
   }
-  function cap(L){ return L.charAt(0)+L.slice(1).toLowerCase(); }
   function pickFirstSub(){
-    if(S.mode==="live"){
-      S.sub="__all"; buildSubs(); renderLive();
-    } else {
-      var cats=S.langVodCats[S.lang]||[]; S.sub=(cats[0]||{}).id||null; buildSubs(); if(S.sub) showVodCat(S.sub); else main.innerHTML='<div class="empty">Nothing here.</div>';
-    }
+    if(S.mode==="live"){ S.sub="__all"; buildSubs(); renderLive(); }
+    else { var cats=S.langVodCats[S.lang]||[]; S.sub=(cats[0]||{}).id||null; buildSubs(); if(S.sub) showVodCat(S.sub); else main.innerHTML='<div class="empty">Nothing here.</div>'; }
   }
   function buildSubs(){
-    var html='<span class="lbl">Category</span>';
+    var opts='';
     if(S.mode==="live"){
-      html+='<button data-s="__all"'+(S.sub==="__all"?' class="active"':'')+'>All '+esc(cap(S.lang))+'</button>';
+      opts+='<option value="__all"'+(S.sub==="__all"?' selected':'')+'>All '+esc(cap(S.lang))+'</option>';
       (S.langGenres[S.lang]||[]).forEach(function(g){
-        html+='<button data-s="'+esc(g.id)+'"'+(S.sub===g.id?' class="active"':'')+'>'+esc(subLabel(g.title))+'<span class="n">'+(S.byGenre[g.id]||[]).length+'</span></button>';
+        opts+='<option value="'+esc(g.id)+'"'+(S.sub===g.id?' selected':'')+'>'+esc(subLabel(g.title))+' ('+(S.byGenre[g.id]||[]).length+')</option>';
       });
     } else {
       (S.langVodCats[S.lang]||[]).forEach(function(c){
-        html+='<button data-s="'+esc(c.id)+'"'+(S.sub===c.id?' class="active"':'')+'>'+esc(subLabel(c.title)||cap(S.lang))+'</button>';
+        opts+='<option value="'+esc(c.id)+'"'+(S.sub===c.id?' selected':'')+'>'+esc(subLabel(c.title)||cap(S.lang))+'</option>';
       });
     }
-    el("subs").innerHTML=html;
-    [].forEach.call(el("subs").querySelectorAll("button"),function(b){
-      b.onclick=function(){ S.sub=b.getAttribute("data-s"); S.page=0; buildSubs();
-        if(S.mode==="live") renderLive(); else showVodCat(S.sub); };
-    });
+    el("subs").innerHTML='<span class="ddlbl">Category</span><select id="subSel" class="dd">'+opts+'</select>';
+    el("subSel").onchange=function(){ S.sub=this.value; S.page=0; if(S.mode==="live") renderLive(); else showVodCat(S.sub); };
   }
 
   /* ---- live render ---- */
@@ -309,12 +333,39 @@
     var mb=el("moreBtn"); if(mb&&!S.vod.loading) mb.onclick=function(){ loadVod(); };
   }
   function vodTile(m){
+    var ser=m.isSeries?1:0;
     var img=m.poster?'<img src="'+esc(m.poster)+'" loading="lazy" onerror="this.style.display=\'none\';this.nextSibling.style.display=\'flex\'"><span class="initials" style="display:none">'+esc(initials(m.name))+'</span>':'<span class="initials">'+esc(initials(m.name))+'</span>';
-    return '<div class="tile vod" data-id="'+esc(m.id)+'" data-cat="'+esc(S.vod.id)+'" data-name="'+esc(m.name)+'"><div class="thumb poster">'+img+
+    return '<div class="tile vod" data-id="'+esc(m.id)+'" data-cat="'+esc(S.vod.id)+'" data-name="'+esc(m.name)+'" data-series="'+ser+'"><div class="thumb poster">'+img+
+      (ser?'<span class="serbadge">SERIES</span>':'')+
       '<span class="play"><span><svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg></span></span></div>'+
       '<div class="meta"><div class="name">'+esc(m.name)+'</div>'+(m.year?'<div class="yr">'+esc(m.year)+'</div>':'')+'</div></div>';
   }
-  function bindVod(){ [].forEach.call(main.querySelectorAll(".tile.vod"),function(t){ t.onclick=function(){ playVod(t.getAttribute("data-id"),t.getAttribute("data-cat"),t.getAttribute("data-name")); }; }); }
+  function bindVod(){ [].forEach.call(main.querySelectorAll(".tile.vod"),function(t){ t.onclick=function(){ var id=t.getAttribute("data-id"),cat=t.getAttribute("data-cat"),name=t.getAttribute("data-name"); if(t.getAttribute("data-series")==="1") openSeries(id,cat,name); else playVod(id,cat,name); }; }); }
+
+  /* ---- series episode picker ---- */
+  function openSeries(id,cat,name){
+    el("sheetTitle").textContent=name||"Episodes";
+    el("sheetBody").innerHTML='<div class="empty"><span class="spin"></span></div>';
+    el("sheet").classList.add("show");
+    getJSON("/api/vod/series?id="+encodeURIComponent(id)+"&category="+encodeURIComponent(cat||"")).then(function(r){
+      var seasons=(r&&r.seasons)||[];
+      if(!seasons.length){ el("sheetBody").innerHTML='<div class="empty">No episodes found for this title.</div>'; return; }
+      var multi=seasons.length>1, h='';
+      seasons.forEach(function(se){
+        if(multi) h+='<div class="seah">'+esc(se.name||("Season "+se.season))+'</div>';
+        h+='<div class="eplist">';
+        (se.episodes||[]).forEach(function(e){
+          h+='<button class="epbtn" data-file="'+esc(e.file)+'" data-ep="'+esc(e.ep)+'" data-name="'+esc(e.name)+'"><span class="epn">'+esc(e.ep||"•")+'</span><span class="epname">'+esc(e.name)+'</span><span class="epplay">▶</span></button>';
+        });
+        h+='</div>';
+      });
+      el("sheetBody").innerHTML=h;
+      [].forEach.call(el("sheetBody").querySelectorAll(".epbtn"),function(b){ b.onclick=function(){ playEpisode(b.getAttribute("data-file"),b.getAttribute("data-ep"),b.getAttribute("data-name")); }; });
+    }).catch(function(){ el("sheetBody").innerHTML='<div class="empty">Couldn’t load episodes.</div>'; });
+  }
+  function closeSeries(){ el("sheet").classList.remove("show"); }
+  el("sheetClose").onclick=closeSeries;
+  el("sheet").addEventListener("click",function(e){ if(e.target===el("sheet")) closeSeries(); });
 
   /* ---- search ---- */
   var qTimer=null;
@@ -332,12 +383,15 @@
 
   /* ---- player ---- */
   var video=el("video"), hls=null, barTimer=null;
-  function openPlayer(name){ el("ptitle").textContent=name||""; el("player").classList.add("show"); el("pload").style.display="flex"; el("pload").innerHTML='<span class="spin"></span> Loading…'; stopHls(); }
+  function openPlayer(name){ el("ptitle").textContent=name||""; el("player").classList.add("show"); el("pload").style.display="flex"; el("pload").innerHTML='<span class="spin"></span> Loading…'; stopHls(); showBar(); }
   function playChannel(c){ openPlayer(c.name);
     getJSON("/api/link?type=itv&cmd="+encodeURIComponent(c.cmd)).then(function(r){ if(!r||!r.url){ el("pload").innerHTML="This channel isn’t available right now."; return; } startStream(r.url); }).catch(function(){ el("pload").innerHTML="Couldn’t load this channel."; });
   }
   function playVod(id,cat,name){ openPlayer(name);
     getJSON("/api/vod/play?id="+encodeURIComponent(id)+"&category="+encodeURIComponent(cat||"")).then(function(r){ if(!r||!r.url){ el("pload").innerHTML=(r&&r.error)?esc(r.error):"This title is unavailable. Try another."; return; } startStream(r.url); }).catch(function(){ el("pload").innerHTML="Couldn’t load this title."; });
+  }
+  function playEpisode(file,ep,name){ closeSeries(); openPlayer(name);
+    getJSON("/api/vod/episode?file="+encodeURIComponent(file)+"&ep="+encodeURIComponent(ep||"")).then(function(r){ if(!r||!r.url){ el("pload").innerHTML=(r&&r.error)?esc(r.error):"This episode is unavailable. Try another."; return; } startStream(r.url); }).catch(function(){ el("pload").innerHTML="Couldn’t load this episode."; });
   }
   function startStream(url){
     var m3=url.indexOf("m3u8")>=0;
@@ -350,10 +404,21 @@
     video.onplaying=function(){ el("pload").style.display="none"; };
   }
   function stopHls(){ if(hls){ try{hls.destroy();}catch(e){} hls=null; } video.removeAttribute("src"); try{video.load();}catch(e){} }
-  function closePlayer(){ el("player").classList.remove("show"); stopHls(); }
-  el("pback").onclick=closePlayer; video.controls=true;
-  document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&el("player").classList.contains("show")) closePlayer(); });
-  el("player").addEventListener("mousemove",function(){ el("pbar").classList.remove("hide"); clearTimeout(barTimer); barTimer=setTimeout(function(){ el("pbar").classList.add("hide"); },2600); });
+  function closePlayer(){ el("player").classList.remove("show"); stopHls(); try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} }
+  function goFull(){
+    var p=el("player");
+    if(/iPhone|iPad|iPod/.test(navigator.userAgent) && video.webkitEnterFullscreen){ try{ video.webkitEnterFullscreen(); return; }catch(e){} }
+    try{
+      if(document.fullscreenElement){ document.exitFullscreen(); return; }
+      var fn=p.requestFullscreen||p.webkitRequestFullscreen||p.mozRequestFullScreen||p.msRequestFullscreen;
+      if(fn){ fn.call(p); } else if(video.webkitEnterFullscreen){ video.webkitEnterFullscreen(); }
+    }catch(e){}
+  }
+  function showBar(){ el("pbar").classList.remove("hide"); clearTimeout(barTimer); barTimer=setTimeout(function(){ el("pbar").classList.add("hide"); },3000); }
+  el("pback").onclick=closePlayer; el("pfull").onclick=function(e){ e.stopPropagation(); goFull(); showBar(); }; video.controls=true;
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape"){ if(el("sheet").classList.contains("show")) closeSeries(); else if(el("player").classList.contains("show")) closePlayer(); } if(e.key==="f"&&el("player").classList.contains("show")) goFull(); });
+  el("player").addEventListener("mousemove",showBar);
+  el("player").addEventListener("touchstart",showBar);
   video.addEventListener("click",function(){ if(video.paused) video.play(); else video.pause(); });
 
   load();
