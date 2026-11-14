@@ -186,30 +186,43 @@
 
   function setStatus(ok){ el("pill").className="pill"+(ok?"":" off"); el("statusTxt").textContent=ok?"Connected":"Box is on — turn it off"; }
 
-  function load(){
+  function showDisconnected(er){
+    setStatus(false);
+    var boxOn=/box is on/i.test(er||"");
+    main.innerHTML='<div class="empty"><h2>'+(boxOn?"The TV box is on":"Can’t connect")+'</h2><p>'+esc(er||"Not signed in yet.")+'</p>'+
+      (boxOn
+        ? '<p style="margin-top:18px"><button class="more" id="takeBtn">Watch here instead</button></p><p style="font-size:13px;color:#9aa0ad;margin-top:10px;max-width:420px;margin-left:auto;margin-right:auto">This moves the service to this device. Put the box in standby (power button on its remote) so it doesn’t grab it back.</p>'
+        : '<p style="margin-top:14px"><button class="more" id="retryBtn">Try again</button></p>')+
+      '</div>';
+    var tb=el("takeBtn");
+    if(tb){ tb.onclick=function(){ tb.textContent="Switching…"; tb.disabled=true;
+      fetch("/api/takeover").then(function(r){return r.json();}).then(function(x){ if(x&&x.ok){ load(); } else { tb.textContent="Try again"; tb.disabled=false; toast((x&&x.error)||"Couldn’t switch"); } }).catch(function(){ tb.textContent="Try again"; tb.disabled=false; }); }; }
+    var rb=el("retryBtn"); if(rb) rb.onclick=function(){ load(); };
+  }
+  function loaded(){
+    setStatus(true);
+    Promise.all([getJSON("/api/live"),getJSON("/api/state").catch(function(){return{};}),getJSON("/api/vod/categories?type=vod").catch(function(){return[];})])
+    .then(function(res){
+      var live=res[0]||{}, stt=res[1]||{}, vod=res[2]||[];
+      S.genres=live.genres||[]; S.channels=live.channels||[];
+      S.favs=Array.isArray(stt.favourites)?stt.favourites.slice():[];
+      S.vodCats=Array.isArray(vod)?vod:[];
+      prep(); buildModes(); setMode(S.vodCats.length?"vod":"live");
+    }).catch(function(){ main.innerHTML='<div class="empty">Failed to load. <button class="more" onclick="location.reload()">Retry</button></div>'; });
+  }
+  function load(tried){
     getJSON("/api/status").then(function(st){
-      if(!st||!st.connected){ setStatus(false);
-        var er=(st&&st.error)||"Not signed in yet."; var boxOn=/box is on/i.test(er);
-        main.innerHTML='<div class="empty"><h2>'+(boxOn?"The TV box is on":"Can’t connect")+'</h2><p>'+esc(er)+'</p>'+
-          (boxOn
-            ? '<p style="margin-top:18px"><button class="more" id="takeBtn">Watch here instead</button></p><p style="font-size:13px;color:#9aa0ad;margin-top:10px;max-width:420px;margin-left:auto;margin-right:auto">This moves the service to this device. Put the box in standby (power button on its remote) so it doesn’t grab it back.</p>'
-            : '<p style="margin-top:14px"><button class="more" onclick="location.reload()">Try again</button></p>')+
-          '</div>';
-        var tb=el("takeBtn");
-        if(tb){ tb.onclick=function(){ tb.textContent="Switching…"; tb.disabled=true;
-          fetch("/api/takeover").then(function(r){return r.json();}).then(function(x){ if(x&&x.ok){ load(); } else { tb.textContent="Try again"; tb.disabled=false; toast((x&&x.error)||"Couldn’t switch"); } }).catch(function(){ tb.textContent="Try again"; tb.disabled=false; }); }; }
-        else setTimeout(load,6000);
-        return; }
-      setStatus(true);
-      Promise.all([getJSON("/api/live"),getJSON("/api/state").catch(function(){return{};}),getJSON("/api/vod/categories?type=vod").catch(function(){return[];})])
-      .then(function(res){
-        var live=res[0]||{}, stt=res[1]||{}, vod=res[2]||[];
-        S.genres=live.genres||[]; S.channels=live.channels||[];
-        S.favs=Array.isArray(stt.favourites)?stt.favourites.slice():[];
-        S.vodCats=Array.isArray(vod)?vod:[];
-        prep(); buildModes(); setMode(S.vodCats.length?"vod":"live");
-      }).catch(function(){ main.innerHTML='<div class="empty">Failed to load. <button class="more" onclick="location.reload()">Retry</button></div>'; });
-    }).catch(function(){ setStatus(false); setTimeout(load,5000); });
+      if(st&&st.connected){ loaded(); return; }
+      var er=(st&&st.error)||"";
+      if(/box is on/i.test(er)){ showDisconnected(er); return; }
+      if(tried){ showDisconnected(er||"Couldn’t connect. Make sure the Mac is on and online."); return; }
+      // box is off → sign in on demand
+      setStatus(false); main.innerHTML='<div class="empty"><span class="spin"></span><br><span style="margin-top:10px;display:inline-block">Connecting…</span></div>';
+      fetch("/api/connect").then(function(r){return r.json();}).then(function(x){
+        if(x&&x.ok){ load(true); return; }
+        showDisconnected((x&&x.error)||"Couldn’t connect.");
+      }).catch(function(){ showDisconnected("Couldn’t reach the Mac server. Make sure the Mac is on."); });
+    }).catch(function(){ setStatus(false); setTimeout(function(){ load(); },5000); });
   }
 
   function prep(){
